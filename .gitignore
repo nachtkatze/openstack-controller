@@ -55,3 +55,9 @@ docs/_build/
 
 # PyBuilder
 target/
+
+# repo related
+important.py
+n2.py
+openrc.sh
+del.sh
