@@ -6,8 +6,13 @@ from neutronclient.v2_0 import client as neutronclient
 logging.basicConfig(level=logging.INFO)
 
 class Booter():
-
+	"""
+	Boots the corresponding topology.
+	"""
 	def __init__(self, topo='fw_lb', *args, **kwargs):
+		"""
+		Read from config.ini the configuration for the topologies.
+		"""
 		self.topo = topo
 		self.args = args
 		self.kwargs = kwargs
@@ -15,12 +20,19 @@ class Booter():
 		self.config.read('config.ini')
 
 	def parse_config(self, config):
+		"""
+		Parse the config from config.ini file. Parse to a list
+		in case of comma-separated values.
+		"""
 		c = dict()
 		for k,v in config.items():
 			c[k] = v.split(',')	
 		return c
 
 	def up(self):
+		"""
+		Call the booter to the corresponding topology class.
+		"""
 		if self.topo == 'fw_lb':	
 			config = self.parse_config(self.config['FwLbTopo'])
 			FwLbTopo(opts=config,
@@ -78,6 +90,9 @@ class FwLbTopo():
 		self.servers = []
 
 	def _create_net(self,neutron=None, net_name=None):
+		"""
+		Create the network using the neutronclient.	
+		"""
 		net_body = {'network':{
 				'name': net_name,
 				'admin_state_up': True
@@ -88,6 +103,10 @@ class FwLbTopo():
 
 	def _create_subnet(self, neutron=None, subnet_name=None, 
 		subnet_prefix=None, net_id=None):
+		"""
+		Create the subnet attached to a network using the
+		neutronclient.
+		"""
 		subnet_body = {'subnets':[{
 				'cidr': subnet_prefix,
 				'ip_version': 4,
@@ -100,7 +119,9 @@ class FwLbTopo():
 
 	def _boot_instance(self, nova=None, image=None, flavor=None, nets=None,
 		key_name=None, secgroups=None, name=None, count=1):
-		
+		"""
+		Boot the instace/s using the novaclient.
+		"""	
 		image = nova.images.find(name=image)
 		flavor = nova.flavors.find(name=flavor)
 		secgroups = [secgroups]
