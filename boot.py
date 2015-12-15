@@ -46,7 +46,7 @@ class FwLbTopo():
 	- Two or three networks
 	- FaaS and LbaaS
 	- n instances as servers
-	- m instances as persistences nodes
+	- m instances as storage nodes
 	"""
 
 	def __init__(self, 
@@ -176,7 +176,12 @@ class FwLbTopo():
 		for net in nets:
 			net = nova.networks.find(label=net)
 			nics.append({'net-id':net.id})
-		f_userdata = open(userdata,'r')
+
+		if userdata is None:
+			f_userdata = None
+		else:
+			f_userdata = open(userdata,'r')
+
 		instance = nova.servers.create(name=name, image=image, flavor=flavor,
 			key_name=key_name, nics=nics, max_count=count, 
 			min_count=count, security_groups=secgroups,
@@ -192,59 +197,66 @@ class FwLbTopo():
 
 		# Create nets
 		logging.info('Creating networks...')
-		#try:
-		for i in range(len(self.instances)):
-			self.nets.append(self._create_net(neutron=neutron, 
+		try:
+			for i in range(len(self.instances)):
+				self.nets.append(self._create_net(neutron=neutron, 
 					net_name=self.net_names[i]))
-		#except:
-		#	logging.error('ERROR at creating networks')
-		#else:
-		#	logging.info('Success!')
+		except Exception as e:
+			logging.error('ERROR at creating networks:')
+			logging.error(e)
+		else:
+			logging.info('Success!')
 
 		# Create subnets into the created nets
 		logging.info('Creating subnetworks...')
-		#try:
-		for i in range(len(self.instances)):
-			self.subnets.append(self._create_subnet(neutron=neutron,
+		try:
+			for i in range(len(self.instances)):
+				self.subnets.append(self._create_subnet(neutron=neutron,
 					subnet_name=self.subnet_names[i], 
 					subnet_prefix=self.net_prefixes[i],
 					net_id=self.nets[i]['id']))
-		#except:
-		#	logging.error('ERROR at creating subnetworks')
-		#else:
-		#	logging.info('Success!')
+		except Exception as e:
+			logging.error('ERROR at creating subnetworks')
+			logging.error(e)
+		else:
+			logging.info('Success!')
 
 		# Create router and connect to net
 		logging.info('Creating router...')
-		self._create_router(neutron=neutron, nova=nova,
-			net_name=self.net_names[0],
-			router_name=self.router_name,
-			port_names=self.router_ports)
+		try:
+			self._create_router(neutron=neutron, nova=nova,
+				net_name=self.net_names[0],
+				router_name=self.router_name,
+				port_names=self.router_ports)
+		except Exception as e:
+			logging.error('ERROR at creating router')
+			logging.error(e)
 
 		# Boot the server instances
 		logging.info("Booting server instances")
-		#try:
-		print(self.userdata[0])
-		self._boot_instance(nova=nova, image=self.images[0], 
+		try:
+			self._boot_instance(nova=nova, image=self.images[0], 
 				flavor=self.flavors[0], nets=self.net_names,
 				key_name=self.key_names[0], 
 				secgroups=self.secgroups[0],
 				name='server', userdata=self.userdata[0],
 				count=self.instances[0] )
-		#except:
-		#	logging.error('ERROR when creating servers')
-		#else:
-		#	logging.info('Success!')
+		except Exception as e:
+			logging.error('ERROR when creating servers')
+			logging.error(e)
+		else:
+			logging.info('Success!')
 	
-		# Boot the persistence instances
-		logging.info('Booting persistence instances')	
+		# Boot the storage instances
+		logging.info('Booting storage instances')	
 		try:
 			self._boot_instance(nova=nova, image=self.images[1],
 				flavor=self.flavors[1], nets=self.net_names[1],
 				key_name=self.key_names[1],
 				secgroups=self.secgroups[1],
 				name='persist', count=self.instances[1] )
-		except:
-			logging.error('ERROR when creating persistence instances')
+		except Exception as es:
+			logging.error('ERROR when creating storage instances')
+			logging.error(e)
 		else:
 			logging.info('Success!')
