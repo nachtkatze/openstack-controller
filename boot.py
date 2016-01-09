@@ -3,6 +3,8 @@ import configparser
 from novaclient import client as novaclient
 from neutronclient.v2_0 import client as neutronclient
 
+import utils
+
 logging.basicConfig(level=logging.INFO)
 
 class Booter():
@@ -19,22 +21,13 @@ class Booter():
 		self.config = configparser.ConfigParser()
 		self.config.read('config.ini')
 
-	def parse_config(self, config):
-		"""
-		Parse the config from config.ini file. Parse to a list
-		in case of comma-separated values.
-		"""
-		c = dict()
-		for k,v in config.items():
-			c[k] = v.split(',')	
-		return c
-
 	def up(self):
 		"""
 		Call the booter to the corresponding topology class.
 		"""
-		if self.topo == 'fw_lb':	
-			config = self.parse_config(self.config['FwLbTopo'])
+		if self.topo == 'fw_lb':
+			# config = self.parse_config(self.config['FwLbTopo'])
+			config = utils.parse_config(self.config['FwLbTopo'])
 			FwLbTopo(opts=config,
 				session=self.kwargs['session'],
 				token=self.kwargs['token'],
@@ -49,24 +42,24 @@ class FwLbTopo():
 	- m instances as storage nodes
 	"""
 
-	def __init__(self, 
+	def __init__(self,
 		opts=None,
         net_names=['net0','net1'],
-      	net_prefixes=['10.0.0.0/24','10.0.1.0/24'],
-      	subnet_names=['subnet0','subnet1'],
+        net_prefixes=['10.0.0.0/24','10.0.1.0/24'],
+        subnet_names=['subnet0','subnet1'],
 		dns_nameservers=['8.8.8.8'],
 		router_name='r',
 		router_ports=['port0','port1'],
-      	flavors=['tiny_personalizada','tiny_personalizada'],
-      	images=['trusty-server-cloudimg-amd64-cnvr','trusty-server-cloudimg-amd64-cnvr'],
-      	secgroups=['default','default'],
-      	key_names=['my_key','my_key'],
-      	instances=[3,3],
+        flavors=['tiny_personalizada','tiny_personalizada'],
+        images=['trusty-server-cloudimg-amd64-cnvr','trusty-server-cloudimg-amd64-cnvr'],
+        secgroups=['default','default'],
+        key_names=['my_key','my_key'],
+        instances=[3,3],
 		userdata=['ud.txt','ud.txt'],
-      	session=None,
+        session=None,
 		token=None,
 		neutron_endpoint=None,
-      	*args, **kwargs):
+        *args, **kwargs):
 		"""
 		Initialize the topology. Authorization with nova and neutron using
 		a session from keystone for nova and a token for neutron.

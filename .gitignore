@@ -61,3 +61,5 @@ important.py
 n2.py
 openrc.sh
 del.sh
+*.swp
+openstack

@@ -2,7 +2,7 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser(description='''
-   	Control some operations on the OpenStack module
+    Control some operations on the OpenStack module
 	-----------------------------------------------
 	- Creation of net topologies
 	- Management of these topologies
@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description='''
 
 parser.add_argument('opt', metavar='operation', type=str, choices=['boot','shutdown'],
 	help='operation to perform: boot or shutdown')
-parser.add_argument('--topo', default='fw_lb', 
+parser.add_argument('--topo', default='fw_lb',
 	help='name of the topology to create, default is fw_lb')
 parser.add_argument('--net-name', default='net0', dest='net_name',
 	help='net name, default is net0')
@@ -59,7 +59,7 @@ def neutron_connect():
                            region_name=env['OS_REGION_NAME'])
 	endpoint_url = keystone.service_catalog.url_for(service_type='network')
 	token = keystone.auth_token
-	neutron_endpoint = keystone.service_catalog.url_for(service_type='network') 
+	neutron_endpoint = keystone.service_catalog.url_for(service_type='network')
 	return token, neutron_endpoint
 
 if __name__ == '__main__':
@@ -75,10 +75,10 @@ if __name__ == '__main__':
 
 	if args['opt'] == 'boot':
 		import boot
-		logging.debug('Starting booting process...')	
+		logging.debug('Starting booting process...')
 		boot.Booter(**args).up()
 
 	elif args['opt'] == 'shutdown':
-		import delete
+		import drop
 		logging.debug('Starting shutdown process...')
-		delete.shutdown(**vars(args))
+		drop.Dropper(**args).drop()
