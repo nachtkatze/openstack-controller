@@ -1,5 +1,0 @@
-#cloud-config
-packages:
- - apache2
-runcmd:
- - echo "Hello sir,\n my name is $(hostname)" > /var/www/html/index.html
