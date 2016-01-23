@@ -1,0 +1,10 @@
+#cloud-config
+packages:
+ - ssh
+ - crossroads
+runcmd:
+ - cp /etc/network/interfaces.d/eth0.cfg /etc/network/interfaces.d/eth1.cfg
+ - sed -i 's/0/1/g' /etc/network/interfaces.d/eth1.cfg
+ - ifup eth1
+ - route del default
+ - route add default gw 10.0.1.1 eth1

@@ -1,0 +1,5 @@
+#cloud-config
+packages:
+ - ssh
+runcmd:
+ - echo "Hello" > /tmp/test.txt
