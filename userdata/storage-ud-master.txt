@@ -1,0 +1,10 @@
+#cloud-config
+packages:
+ - ssh
+runcmd:
+ - mkdir /nas
+ - gluster peer probe 10.0.2.7
+ - sleep 10
+ - gluster volume create nas replica 2 10.0.2.6:/nas 10.0.2.7:/nas force
+ - sleep 2
+ - gluster volume start nas

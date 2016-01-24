@@ -61,6 +61,7 @@ class FwLbTopo():
         userdata=['userdata/balancer-ud.txt',
                   'userdata/server-ud.txt',
                   'userdata/storage-ud.txt'],
+        fixed_ips=None,
         session=None,
         token=None,
         neutron_endpoint=None,
@@ -83,6 +84,7 @@ class FwLbTopo():
         self.key_names = opts.get('key_names', key_names)
         self.instances = opts.get('instances', instances)
         self.userdata = opts.get('userdata', userdata)
+        self.fixed_ips = opts.get('fixed_ips')
         if session is None:
             raise ValueError('No session provided')
         if token is None:
@@ -173,7 +175,8 @@ class FwLbTopo():
                                              {'subnet_id': subnet_id})
 
     def _boot_instance(self, nova=None, image=None, flavor=None, nets=None,
-        key_name=None, secgroups=None, name=None, userdata=None, count=1):
+        key_name=None, secgroups=None, name=None, userdata=None, fixed_ip=None,
+        count=1):
         """
         Boot the instace/s using the novaclient.
         """
@@ -186,6 +189,9 @@ class FwLbTopo():
         for net in nets:
             net = nova.networks.find(label=net)
             nics.append({'net-id':net.id})
+        if not fixed_ip is None:
+            for i, nic in enumerate(nics):
+                nic['v4-fixed-ip'] = fixed_ip[i]
 
         if userdata is None:
             f_userdata = None
@@ -282,7 +288,16 @@ class FwLbTopo():
                 flavor=self.flavors[2], nets=self.net_names[2],
                 key_name=self.key_names[2],
                 secgroups=self.secgroups[2],
-                name='persist', count=self.instances[2] )
+                name='persist_1', count=1,
+                userdata=self.userdata[2],
+                fixed_ip=[self.fixed_ips[2]])
+            self._boot_instance(nova=nova, image=self.images[2],
+                flavor=self.flavors[2], nets=self.net_names[2],
+                key_name=self.key_names[2],
+                secgroups=self.secgroups[2],
+                name='persist_2', count=1,
+                userdata=self.userdata[3],
+                fixed_ip=[self.fixed_ips[3]])
         except Exception as e:
             logging.error('ERROR when creating storage instances')
             logging.error(e)

@@ -2,4 +2,4 @@
 packages:
  - ssh
 runcmd:
- - echo "Hello" > /tmp/test.txt
+ - mkdir /nas

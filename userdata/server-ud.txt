@@ -7,3 +7,14 @@ runcmd:
  - sed -i 's/0/1/g' /etc/network/interfaces.d/eth1.cfg
  - ifup eth1
  - echo "Hello sir,\n my name is $(hostname)" > /var/www/html/index.html
+ - add-apt-repository ppa:gluster/glusterfs-3.5 -y
+ - apt-get update
+ - apt-get install -y glusterfs-server
+ - sleep 30
+ - mkdir /mnt/nas
+ - BASE_IP="$(ifconfig eth1 | grep "inet addr" | cut -d ' ' -f 12-13 | cut -d ':' -f 2 | cut -d '.' -f -3)"
+ - LAST_IP="$(ifconfig eth1 | grep "inet addr" | cut -d ' ' -f 12-13 | cut -d ':' -f 2 | cut -d '.' -f 4)"
+ - NAS_IP="$BASE_IP.$(($LAST_IP+4))"
+ - mount -t glusterfs "$NAS_IP:/nas" /mnt/nas
+ - echo "File from $(hostname)" > "/mnt/nas/data_$(hostname).txt"
+ - ln -s /mnt/nas/ /var/www/html/nas
