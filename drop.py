@@ -67,6 +67,37 @@ class AllTopo():
             token=self.token)
         neutron_if = NeutronIF()
 
+        # Remove FWaaS
+        logging.info('Removing FWaaS')
+        try:
+            for fw in neutron_if.firewall_list():
+                neutron_if.firewall_delete(fw.get('id'))
+
+            for policy in neutron_if.firewall_policy_list():
+                neutron_if.firewall_policy_delete(policy.get('id'))
+
+            for rule in neutron_if.firewall_rule_list():
+                neutron_if.firewall_rule_delete(id_=rule.get('id'))
+        except Exception as e:
+            logging.error('ERROR at removing FWaaS')
+            logging.error(e)
+        else:
+            logging.info('Success!')
+
+        # Deallocate floating IPs
+        logging.info('Deallocating floating IPs')
+        try:
+            floating_ips = nova.floating_ips.list()
+            for f_ip in floating_ips:
+                nova.servers.remove_floating_ip(server=f_ip.instance_id,
+                                           address=f_ip.ip)
+                nova.floating_ips.delete(f_ip.id)
+        except Exception as e:
+            logging.error('ERROR at deallocating floating IPs')
+            logging.error(e)
+        else:
+            logging.info('Success!')
+
         # Delete routers
         logging.info('Deleting routers...')
         try:

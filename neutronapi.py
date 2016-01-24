@@ -53,3 +53,50 @@ class NeutronIF():
     def router_delete(self, router_id=None, router_name=None):
         router = self._select_name_id(id_=router_id, name=router_name)
         call_sub(['neutron', 'router-delete', router])
+
+    def firewall_rule_create(self, rule_opts=None):
+        opts = ''
+        for opt, value in rule_opts.items():
+            option = '--{} {} '.format(str(opt), str(value))
+            opts += option
+        command = ['neutron', 'firewall-rule-create']
+        command.extend(opts.split())
+        call_sub(command)
+
+    def firewall_policy_create(self, name=None, fw_rules=None):
+       call_sub(['neutron', 'firewall-policy-create', name, '--firewall-rules',
+                fw_rules])
+
+    def firewall_create(self, name=None, fw_policy=None, router=None):
+        call_sub(['neutron', 'firewall-create', fw_policy, '--name', name,
+                 '--router', router])
+
+    def firewall_list(self):
+        resp = call_sub(['neutron', 'firewall-list', '-f', 'json'], 
+                        response=True)
+        resp = self._decode(resp)
+        return json.loads(resp)
+
+    def firewall_delete(self, name=None, id_=None):
+        fw = self._select_name_id(id_=id_, name=name)
+        call_sub(['neutron', 'firewall-delete', fw])
+
+    def firewall_policy_list(self):
+        resp = call_sub(['neutron', 'firewall-policy-list', '-f', 'json'],
+                       response=True)
+        resp = self._decode(resp)
+        return json.loads(resp)
+
+    def firewall_policy_delete(self, name=None, id_=None):
+        policy = self._select_name_id(id_=id_, name=name)
+        call_sub(['neutron', 'firewall-policy-delete', policy])
+
+    def firewall_rule_list(self):
+        resp = call_sub(['neutron', 'firewall-rule-list', '-f', 'json'],
+                       response=True)
+        resp = self._decode(resp)
+        return json.loads(resp)
+
+    def firewall_rule_delete(self, id_=None, name=None):
+        rule = self._select_name_id(id_=id_, name=name)
+        call_sub(['neutron', 'firewall-rule-delete', rule])

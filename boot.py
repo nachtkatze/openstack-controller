@@ -4,6 +4,7 @@ from novaclient import client as novaclient
 from neutronclient.v2_0 import client as neutronclient
 
 import utils
+from neutronapi import NeutronIF
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,9 +27,10 @@ class Booter():
         Call the booter to the corresponding topology class.
         """
         if self.topo == 'fw_lb':
-            # config = self.parse_config(self.config['FwLbTopo'])
             config = utils.parse_config(self.config['FwLbTopo'])
+            fw_config = utils.parse_fw_config(self.config['FWaaS'])
             FwLbTopo(opts=config,
+                fw_opts=fw_config,
                 session=self.kwargs['session'],
                 token=self.kwargs['token'],
                 neutron_endpoint=self.kwargs['neutron_endpoint']).up()
@@ -44,6 +46,7 @@ class FwLbTopo():
 
     def __init__(self,
         opts=None,
+        fw_opts=None,
         net_names=['net0','net1'],
         net_prefixes=['10.0.0.0/24','10.0.1.0/24'],
         subnet_names=['subnet0','subnet1'],
@@ -67,6 +70,7 @@ class FwLbTopo():
         a session from keystone for nova and a token for neutron.
         """
 
+        self.fw_opts = fw_opts
         self.net_names = opts.get('net_names', net_names)
         self.net_prefixes = opts.get('net_prefixes', net_prefixes)
         self.subnet_names = opts.get('subnet_names', subnet_names)
@@ -154,7 +158,7 @@ class FwLbTopo():
         request = {'router': {'name': router_name,
                     'admin_state_up': True}}
 
-        
+
         router = neutron.create_router(request)
         router_id = router['router']['id']
 
@@ -172,7 +176,7 @@ class FwLbTopo():
         key_name=None, secgroups=None, name=None, userdata=None, count=1):
         """
         Boot the instace/s using the novaclient.
-        """ 
+        """
         image = nova.images.find(name=image)
         flavor = nova.flavors.find(name=flavor)
         secgroups = [secgroups]
@@ -186,26 +190,28 @@ class FwLbTopo():
         if userdata is None:
             f_userdata = None
         else:
-            f_userdata = open(userdata,'r')
+            f_userdata = open(userdata, 'r')
 
         instance = nova.servers.create(name=name, image=image, flavor=flavor,
-            key_name=key_name, nics=nics, max_count=count, 
+            key_name=key_name, nics=nics, max_count=count,
             min_count=count, security_groups=secgroups,
-            userdata=f_userdata)    
+            userdata=f_userdata)
  
     def up(self):
         """
         Set up the topology.
         """
+
         nova = novaclient.Client('2', session=self.session)
         neutron = neutronclient.Client(endpoint_url=self.neutron_endpoint,
             token=self.token)
+        neutron_if = NeutronIF()
 
         # Create nets
         logging.info('Creating networks...')
         try:
             for i in range(len(self.instances)):
-                self.nets.append(self._create_net(neutron=neutron, 
+                self.nets.append(self._create_net(neutron=neutron,
                     net_name=self.net_names[i]))
         except Exception as e:
             logging.error('ERROR at creating networks:')
@@ -218,7 +224,7 @@ class FwLbTopo():
         try:
             for i in range(len(self.instances)):
                 self.subnets.append(self._create_subnet(neutron=neutron,
-                    subnet_name=self.subnet_names[i], 
+                    subnet_name=self.subnet_names[i],
                     subnet_prefix=self.net_prefixes[i],
                     net_id=self.nets[i]['id']))
         except Exception as e:
@@ -257,9 +263,9 @@ class FwLbTopo():
         # Boot the server instances
         logging.info("Booting server instances")
         try:
-            self._boot_instance(nova=nova, image=self.images[1], 
+            self._boot_instance(nova=nova, image=self.images[1],
                 flavor=self.flavors[1], nets=self.net_names[1:],
-                key_name=self.key_names[1], 
+                key_name=self.key_names[1],
                 secgroups=self.secgroups[1],
                 name='server', userdata=self.userdata[1],
                 count=self.instances[1] )
@@ -268,17 +274,53 @@ class FwLbTopo():
             logging.error(e)
         else:
             logging.info('Success!')
-    
+
         # Boot the storage instances
-        logging.info('Booting storage instances')   
+        logging.info('Booting storage instances')
         try:
             self._boot_instance(nova=nova, image=self.images[2],
                 flavor=self.flavors[2], nets=self.net_names[2],
                 key_name=self.key_names[2],
                 secgroups=self.secgroups[2],
                 name='persist', count=self.instances[2] )
-        except Exception as es:
+        except Exception as e:
             logging.error('ERROR when creating storage instances')
             logging.error(e)
         else:
             logging.info('Success!')
+
+        # Allocate a floating IP and associate to balancer instance
+        logging.info('Allocating IP')
+        try:
+            for server in nova.servers.list():
+                if server.name == 'loadbalancer':
+                    id_ = server.id
+            nova.floating_ips.create(pool='ExtNet')
+            floating_ips = nova.floating_ips.list()
+            floating_ip = floating_ips[0].ip
+            nova.servers.add_floating_ip(server=id_,
+                                         address=floating_ip)
+
+        except Exception as e:
+            logging.error('ERROR when allocating IP')
+            logging.error(e)
+        else:
+            logging.info('Success!')
+
+        # Create Firewall
+        logging.info('Creating FWaaS')
+        try:
+            for fw_rule in self.fw_opts['rules']:
+                neutron_if.firewall_rule_create(fw_rule)
+            neutron_if.firewall_policy_create(name=self.fw_opts['policy_name'],
+                                             fw_rules=self.fw_opts['policy_rules'])
+
+            neutron_if.firewall_create(name=self.fw_opts['fw_name'],
+                                      fw_policy=self.fw_opts['policy_name'],
+                                      router=self.fw_opts['fw_router'])
+        except Exception as e:
+            logging.error('ERROR at creating FWaaS')
+            logging.error(e)
+        else:
+            logging.info('Success!')
+

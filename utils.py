@@ -14,6 +14,20 @@ def parse_config(config):
             c[k] = v.split(',')
         return c
 
+def parse_fw_config(config):
+    c = {'rules':list()}
+    for k,v, in config.items():
+        if k.split('_')[0] == 'rule':
+            rule = dict()
+            rule_opts = v.split(',')
+            for opt in rule_opts:
+                value_option = opt.split(':')
+                rule[value_option[0]] = value_option[1]
+            c['rules'].append(rule)
+        else:
+            c[k] = v
+    return c
+
 def call_sub(args, response=False):
 	p = Popen(args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
 	out,err = p.communicate()
